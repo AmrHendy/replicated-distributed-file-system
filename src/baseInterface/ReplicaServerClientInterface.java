@@ -1,9 +1,11 @@
+package baseInterface;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
-import test.MessageNotFoundException;
+//import test.MessageNotFoundException;
 
 public interface ReplicaServerClientInterface extends Remote {
 	/**

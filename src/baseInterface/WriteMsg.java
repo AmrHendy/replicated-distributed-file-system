@@ -1,3 +1,4 @@
+package baseInterface;
 
 public class WriteMsg {
 	private long transactionId;
