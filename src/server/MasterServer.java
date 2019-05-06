@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +36,8 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		fileRepLocaMap = new ConcurrentHashMap<>();
         Scanner sc = new Scanner(repServers);
         Scanner sc2 = new Scanner(metaData);
+        transID = new AtomicInteger(0);
+        timeStamp = new AtomicInteger(0);
 //        File dir = new File(direction);
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
@@ -68,11 +69,13 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 			}
             fileRepLocaMap.put(file, replicaLocation);
         }
+
         sc2.close();
 	}
 
 	@Override
 	public ReplicaLoc[] read(String fileName) throws FileNotFoundException, IOException, RemoteException {
+		System.out.println("enter");
 		if(!fileRepLocaMap.containsKey(fileName)){
 			throw new FileNotFoundException();
 		}
@@ -110,10 +113,11 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		}
 		return replcas;
 	}
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws IOException {
+//		MasterServer s = new MasterServer();
+//		s.write(new FileContent("test1.txt"));
 		Controller c = new Controller();
 		c.run();
-
 
 	}
 }

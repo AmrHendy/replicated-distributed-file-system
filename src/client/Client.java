@@ -19,8 +19,8 @@ public class Client {
 	}
 	
 	public void read(String fileName) throws FileNotFoundException, RemoteException, IOException{
-		ReplicaLoc loc  = master.read(fileName)[0];
-		System.out.println(loc.getName());
+		ReplicaLoc[] loc  = master.read(fileName);
+		System.out.println(loc[0].getName());
 		// conection with replca
 		
 	}
@@ -38,11 +38,11 @@ public class Client {
 //		String direction = "‎⁨⁨hosamelsafty⁩";
 		System.setProperty("java.rmi.server.hostname", masterAdd);
 		Registry reg = LocateRegistry.getRegistry(masterAdd,masterPort);
-		System.out.println( reg.lookup(masterName).getClass());;
-		return master;
+		return (MasterServerClientInterface) reg.lookup(masterName);
 	}
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
 		Client c = new Client();
-		c.read("test1.txt");
+//		c.read("test1.txt");
+		c.write(new FileContent("test1.txt"));
 	}
 }

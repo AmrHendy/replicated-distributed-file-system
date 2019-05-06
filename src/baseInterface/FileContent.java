@@ -1,7 +1,12 @@
 package baseInterface;
 
+import java.io.Serializable;
 
-public class FileContent {
+public class FileContent implements Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4466L;
 	private String data;
 	private String fileName;
 	

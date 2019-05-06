@@ -1,6 +1,12 @@
 package baseInterface;
 
-public class WriteMsg {
+import java.io.Serializable;
+
+public class WriteMsg  implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 12345L;
 	private long transactionId;
 	private  long timeStamp;
 	private ReplicaLoc loc;
