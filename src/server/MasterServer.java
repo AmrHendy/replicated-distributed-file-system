@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
@@ -16,23 +17,27 @@ import baseInterface.MasterServerClientInterface;
 import baseInterface.ReplicaLoc;
 import baseInterface.WriteMsg;
 
-public class MasterServer implements MasterServerClientInterface{
+public class MasterServer extends UnicastRemoteObject implements MasterServerClientInterface{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private ConcurrentHashMap<String, ReplicaLoc[]> fileRepLocaMap;
-	ConcurrentHashMap<String, ReplicaLoc> nameReplicaLocMap = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<String, ReplicaLoc> nameReplicaLocMap;
 	private static Random rand = new Random();
-	private ArrayList<ReplicaLoc> replcasLoc = new ArrayList<>();
+	private ArrayList<ReplicaLoc> replcasLoc ;
 	private static String METADATA_FILE_NAME = "metadata.txt";
 	private static String REPLICA_FILE_NAME = "replicaServers.txt";
 	private static int REP_PER_FILE = 2;
 	private AtomicInteger transID ,timeStamp;
-	public MasterServer(String direction) throws FileNotFoundException {
+	public MasterServer() throws FileNotFoundException , RemoteException{
 		File metaData = new File(METADATA_FILE_NAME);
 		File repServers = new File(REPLICA_FILE_NAME);
 		nameReplicaLocMap = new ConcurrentHashMap<>();
 		fileRepLocaMap = new ConcurrentHashMap<>();
         Scanner sc = new Scanner(repServers);
         Scanner sc2 = new Scanner(metaData);
-        File dir = new File(direction);
+//        File dir = new File(direction);
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
             String[] splited = line.split("\\s+");
@@ -42,16 +47,17 @@ public class MasterServer implements MasterServerClientInterface{
             nameReplicaLocMap.put(name, new ReplicaLoc(name,ip,port));
         }
         sc.close();
-    	replcasLoc = (ArrayList<ReplicaLoc>) nameReplicaLocMap.values();	
-        if (dir.mkdirs()) {
-            System.out.format("Directory %s has been created.", dir.getAbsolutePath());
-
-        } else if (dir.isDirectory()) {
-            System.out.format("Directory %s has already been created.", dir.getAbsolutePath());
-
-        } else {
-            System.out.format("Directory %s could not be created.", dir.getAbsolutePath());
-        }
+        
+    	replcasLoc = new ArrayList<>( nameReplicaLocMap.values());	
+//        if (dir.mkdirs()) {
+//            System.out.format("Directory %s has been created.", dir.getAbsolutePath());
+//
+//        } else if (dir.isDirectory()) {
+//            System.out.format("Directory %s has already been created.", dir.getAbsolutePath());
+//
+//        } else {
+//            System.out.format("Directory %s could not be created.", dir.getAbsolutePath());
+//        }
         while (sc2.hasNextLine()) {
             String line = sc2.nextLine();
             String[] splited = line.split("\\s+");
@@ -82,11 +88,11 @@ public class MasterServer implements MasterServerClientInterface{
 		ReplicaLoc[] replicas = null;
 		if(!fileRepLocaMap.containsKey(fileName)){
 			replicas = getRandomReplica();
+			fileRepLocaMap.put(fileName, replicas);
 		}
 		else {
 			replicas = fileRepLocaMap.get(fileName);
 		}
-		fileRepLocaMap.put(fileName, replicas);
 		ReplicaLoc primaryLoc = replicas[0];
 		
 		
@@ -105,9 +111,8 @@ public class MasterServer implements MasterServerClientInterface{
 		return replcas;
 	}
 	public static void main(String[] args) throws FileNotFoundException {
-		String masterName = "masterServer";
-		String masterAdd = "127.0.0.1";
-		int masterPort = 7000;
+		Controller c = new Controller();
+		c.run();
 
 
 	}
