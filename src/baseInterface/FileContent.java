@@ -14,15 +14,19 @@ public class FileContent implements Serializable{
 		this.fileName = filename;
 		data = new String();
 	}
+
 	public String getData() {
 		return data;
 	}
+	
 	public void setData(String data) {
 		this.data = data;
 	}
+	
 	public String getFileName() {
 		return fileName;
 	}
+	
 	public void setFileName(String fileName) {
 		this.fileName = fileName;
 	}

@@ -63,7 +63,7 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
 		List<ReplicaServerReplicaServerInterface> slaveReplicas = fileSlaveReplicasMap.get(fileName);
         
         boolean writeSuccess = true;
-		for (ReplicaServerReplicaServerInterface replica : slaveReplicasStubs) {
+		for (ReplicaServerReplicaServerInterface replica : fileSlaveReplicasMap) {
             boolean sucess = replica.updateFile(fileName, new ArrayList<>(chunkMap.values()));
             writeSuccess = writeSuccess && success;
 		}
@@ -79,7 +79,6 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
             bw.close();
             lock.writeLock().unlock();
         }
-		
 		activeTransactions.remove(txnID);
 		transactionFileMap.remove(txnID);
 		return writeSuccess;
@@ -112,7 +111,7 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
             ReplicaServerReplicaServerInterface stub = (ReplicaServerReplicaServerInterface) registry.lookup(loc.getName()));
             slaveReplicasStubs.add(stub);
    	    }
-		filesReplicaMap.put(fileName, slaveReplicasStubs);
+        fileSlaveReplicasMap.put(fileName, slaveReplicasStubs);
 	}
 
     public void run(){

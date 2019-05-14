@@ -22,14 +22,18 @@ public class Client {
 	public void read(String fileName) throws FileNotFoundException, RemoteException, IOException{
 		ReplicaLoc[] loc  = master.read(fileName);
 		System.out.println(loc[0].getName());
-		// conection with replca	
+		// conection with replca
+		ReplicaServerClientInterface replicaServer = gethandle(loc[0]);
+		FileContent fileContent = replicaServer.read(fileName);
+		System.out.println("Content = " + fileContent.getData());
 	}
 
 	public void write(FileContent file) throws RemoteException, IOException{
 		WriteMsg msg  = master.write(file);
 		System.out.println(msg.getTimeStamp());
-
-		
+		ReplicaLoc replicaLoc = msg.getLoc();
+		ReplicaServerClientInterface replicaServer = gethandle(replicaLoc);
+		replicaServer.write(msg.getTransactionId(), )
 	}
 	
 	public MasterServerClientInterface gethandle() throws RemoteException, NotBoundException{
