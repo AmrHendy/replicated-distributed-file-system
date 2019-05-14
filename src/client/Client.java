@@ -13,7 +13,8 @@ import baseInterface.ReplicaLoc;
 import baseInterface.WriteMsg;
 
 public class Client {
-	MasterServerClientInterface master;
+	
+	private MasterServerClientInterface master;
 
 	public Client() throws RemoteException, NotBoundException {
 		master = gethandle();
@@ -33,7 +34,22 @@ public class Client {
 		System.out.println(msg.getTimeStamp());
 		ReplicaLoc replicaLoc = msg.getLoc();
 		ReplicaServerClientInterface replicaServer = gethandle(replicaLoc);
-		replicaServer.write(msg.getTransactionId(), )
+		String allData = file.getData();
+		// assuming chunk size of 16KB
+		const int CHUNK_SIZE = 2048;
+		long msgSeqNum = 1;
+		for(int startIndex = 0; startIndex < allData.length(); startIndex += CHUNK_SIZE){	
+			int endIndex = Math.min(startIndex + CHUNK_SIZE, allData.length());
+			replicaServer.write(msg.getTransactionId(), msgSeqNum, allData.substr(startIndex, endIndex));
+			msgSeqNum++;
+		}
+		boolean successCommit = replicaServer.commit(msg.getTransactionId(), msgSeqNum);
+		if(successCommit){
+			System.out.println("Successfull Write");
+		}
+		else{
+			System.out.println("Unsuccessfull Write");
+		}
 	}
 	
 	public MasterServerClientInterface gethandle() throws RemoteException, NotBoundException{
