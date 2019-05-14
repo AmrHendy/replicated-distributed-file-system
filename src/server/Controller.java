@@ -17,6 +17,7 @@ public class Controller implements CommunicationStrategy {
 			MasterServer master = new MasterServer();
 			Registry registry = LocateRegistry.createRegistry(masterPort);
 			registry.bind(masterName, master);
+			System.out.println(masterName + " is alive at address : " + masterAdd + " port : " + masterPort);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

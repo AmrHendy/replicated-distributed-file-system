@@ -9,7 +9,9 @@ import java.rmi.registry.Registry;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerClientInterface;
+import baseInterface.MessageNotFoundException;
 import baseInterface.ReplicaLoc;
+import baseInterface.ReplicaServerClientInterface;
 import baseInterface.WriteMsg;
 
 public class Client {
@@ -20,7 +22,7 @@ public class Client {
 		master = gethandle();
 	}
 	
-	public void read(String fileName) throws FileNotFoundException, RemoteException, IOException{
+	public void read(String fileName) throws FileNotFoundException, RemoteException, IOException, NotBoundException{
 		ReplicaLoc[] loc  = master.read(fileName);
 		System.out.println(loc[0].getName());
 		// conection with replca
@@ -29,20 +31,26 @@ public class Client {
 		System.out.println("Content = " + fileContent.getData());
 	}
 
-	public void write(FileContent file) throws RemoteException, IOException{
+	public void write(FileContent file) throws RemoteException, IOException, NotBoundException, MessageNotFoundException{
+		
 		WriteMsg msg  = master.write(file);
 		System.out.println(msg.getTimeStamp());
 		ReplicaLoc replicaLoc = msg.getLoc();
 		ReplicaServerClientInterface replicaServer = gethandle(replicaLoc);
 		String allData = file.getData();
+		
 		// assuming chunk size of 16KB
-		const int CHUNK_SIZE = 2048;
-		long msgSeqNum = 1;
+		final int CHUNK_SIZE = 2048;
+		long msgSeqNum = 0;
+		
+		FileContent content = new FileContent(file.getFileName()) ;
 		for(int startIndex = 0; startIndex < allData.length(); startIndex += CHUNK_SIZE){	
 			int endIndex = Math.min(startIndex + CHUNK_SIZE, allData.length());
-			replicaServer.write(msg.getTransactionId(), msgSeqNum, allData.substr(startIndex, endIndex));
+			content.setData(allData.substring(startIndex, endIndex));
+			replicaServer.write(msg.getTransactionId(), msgSeqNum, content);
 			msgSeqNum++;
 		}
+		
 		boolean successCommit = replicaServer.commit(msg.getTransactionId(), msgSeqNum);
 		if(successCommit){
 			System.out.println("Successfull Write");
@@ -64,15 +72,30 @@ public class Client {
 	public ReplicaServerClientInterface gethandle(ReplicaLoc primrayReplica) throws RemoteException, NotBoundException{
 		String replicaName = primrayReplica.getName();
 		String replicaAdd = primrayReplica.getIp();
-		int replicaPort = primrayReplica.getIp();
+		int replicaPort = primrayReplica.getPort();
 		System.setProperty("java.rmi.server.hostname", replicaAdd);
 		Registry reg = LocateRegistry.getRegistry(replicaAdd, replicaPort);
 		return (ReplicaServerClientInterface) reg.lookup(replicaName);
 	}
 
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
+		
+		
 		Client c = new Client();
-//		c.read("test1.txt");
-		c.write(new FileContent("test1.txt"));
+		c.read("test1.txt");
+	
+		FileContent f = new FileContent("test1.txt");
+		f.setData("write is done 1");
+		
+		try {
+			c.write(f);
+		} catch (MessageNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		c.read("test1.txt");
+	
+	
 	}
 }

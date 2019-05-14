@@ -39,10 +39,10 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		// filling the maps from the presistant metadata files on disk
 		// reading the replica servers metadata
 		File repServers = new File(REPLICA_FILE_NAME);
-		sc = new Scanner(repServers);
+		Scanner sc = new Scanner(repServers);
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
-            String[] splited = line.split("\\s+");
+            String[] splited = line.split(" ");
             String name = splited[0];
             String ip = splited[1];
             int port = Integer.parseInt(splited[2]);
@@ -54,14 +54,14 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 
 		// reading the files metadata
 		File metaData = new File(METADATA_FILE_NAME);
-        Scanner sc = new Scanner(metaData);
+        sc = new Scanner(metaData);
 		while (sc.hasNextLine()) {
             String line = sc.nextLine();
-            String[] splited = line.split("\\s+");
+            String[] splited = line.split(" ");
             String fileName = splited[0];
             ReplicaLoc[] fileReplicaLocations = new ReplicaLoc[REP_PER_FILE];
             for (int i = 1; i <= fileReplicaLocations.length; i++) {
-            	fileReplicaLocations[i] = nameReplicaLocMap.get(splited[i]);
+            	fileReplicaLocations[i-1] = nameReplicaLocMap.get(splited[i]);
 			}
             fileReplicaMap.put(fileName, fileReplicaLocations);
         }
@@ -112,8 +112,6 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	}
 
 	public static void main(String[] args) throws IOException {
-//		MasterServer s = new MasterServer();
-//		s.write(new FileContent("test1.txt"));
 		Controller c = new Controller();
 		c.run();
 	}

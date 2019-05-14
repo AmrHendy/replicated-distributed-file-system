@@ -9,7 +9,7 @@ public class WriteAck implements Serializable {
 	private long messageSeqNumber;
 
 	public WriteAck(long transactionId, long messageSeqNumber){
-		this.timeStamp = timeStamp;
+		this.transactionId = transactionId;
 		this.messageSeqNumber = messageSeqNumber;
 	}
     
