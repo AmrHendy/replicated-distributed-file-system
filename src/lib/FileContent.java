@@ -1,15 +1,15 @@
-package baseInterface;
+package lib;
 
 import java.io.Serializable;
 
 public class FileContent implements Serializable{
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 4466L;
 	private String data;
 	private String fileName;
-	
+
 	public FileContent(String filename){
 		this.fileName = filename;
 		data = new String();
@@ -26,5 +26,5 @@ public class FileContent implements Serializable{
 	public void setFileName(String fileName) {
 		this.fileName = fileName;
 	}
-	
+
 }

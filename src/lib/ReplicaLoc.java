@@ -1,25 +1,26 @@
-package baseInterface;
+package lib;
 
 import java.io.Serializable;
 
 public class ReplicaLoc  implements Serializable {
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
-	private String name;
+	private Integer rid;
 	private String ip;
 	private Integer port;
-	public ReplicaLoc(String name,String ip,Integer port) {
-		this.name = name;
+
+	public ReplicaLoc(Integer rid, String ip, Integer port) {
+		this.rid = rid;
 		this.ip = ip;
 		this.port = port;
 	}
-	public String getName() {
-		return name;
+	public Integer getRID() {
+		return rid;
 	}
-	public void setName(String name) {
-		this.name = name;
+	public void setRID(Integer rid) {
+		this.rid = rid;
 	}
 	public String getIp() {
 		return ip;
@@ -33,5 +34,9 @@ public class ReplicaLoc  implements Serializable {
 	public void setPort(Integer port) {
 		this.port = port;
 	}
-	
+
+	@Override
+	public String toString() {
+	    return String.format("RID: %d, ip: %s, port: %d", this.rid, this.ip, this.port);
+	}
 }

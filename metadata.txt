@@ -1,2 +1,0 @@
-test1.txt Replica1 Replica2
-test2.txt Replica1 Replica3

@@ -5,10 +5,14 @@ import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+import lib.ReplicaLoc;
+import lib.FileContent;
+import lib.WriteMsg;
+
 public interface MasterServerClientInterface extends Remote {
 	/**
 	 * Read file from server
-	 * 
+	 *
 	 * @param fileName
 	 * @return the addresses of  of its different replicas
 	 * @throws FileNotFoundException
@@ -20,7 +24,7 @@ public interface MasterServerClientInterface extends Remote {
 
 	/**
 	 * Start a new write transaction
-	 * 
+	 *
 	 * @param fileName
 	 * @return the requiref info
 	 * @throws RemoteException

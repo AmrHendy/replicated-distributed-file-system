@@ -4,12 +4,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-
-//import test.MessageNotFoundException;
+import lib.MessageNotFoundException;
 
 public interface ReplicaServerClientInterface extends Remote {
 	/**
-	 * 
+	 *
 	 * @param txnID
 	 *            : the ID of the transaction to which this message relates
 	 * @param msgSeqNum
@@ -23,12 +22,12 @@ public interface ReplicaServerClientInterface extends Remote {
 	 */
 	public WriteMsg write(long txnID, long msgSeqNum, FileContent data)
 			throws RemoteException, IOException;
-	
+
 	public FileContent read(String fileName) throws FileNotFoundException,
 	IOException, RemoteException;
-	
+
 	/**
-	 * 
+	 *
 	 * @param txnID
 	 *            : the ID of the transaction to which this message relates
 	 * @param numOfMsgs
@@ -39,10 +38,10 @@ public interface ReplicaServerClientInterface extends Remote {
 	 */
 	public boolean commit(long txnID, long numOfMsgs)
 			throws MessageNotFoundException, RemoteException;
-	
+
 	/**
 	 * * @param txnID: the ID of the transaction to which this message relates
-	 * 
+	 *
 	 * @return true for acknowledgment
 	 * @throws RemoteException
 	 */

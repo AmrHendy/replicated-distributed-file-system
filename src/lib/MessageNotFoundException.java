@@ -1,4 +1,4 @@
-package baseInterface;
+package lib;
 
 public class MessageNotFoundException extends Exception {
 
