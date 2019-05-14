@@ -14,6 +14,7 @@ import baseInterface.WriteMsg;
 
 public class Client {
 	MasterServerClientInterface master;
+
 	public Client() throws RemoteException, NotBoundException {
 		master = gethandle();
 	}
@@ -21,9 +22,9 @@ public class Client {
 	public void read(String fileName) throws FileNotFoundException, RemoteException, IOException{
 		ReplicaLoc[] loc  = master.read(fileName);
 		System.out.println(loc[0].getName());
-		// conection with replca
-		
+		// conection with replca	
 	}
+
 	public void write(FileContent file) throws RemoteException, IOException{
 		WriteMsg msg  = master.write(file);
 		System.out.println(msg.getTimeStamp());
@@ -35,11 +36,20 @@ public class Client {
 		String masterName = "masterServer";
 		String masterAdd = "127.0.0.1";
 		int masterPort = 54443;
-//		String direction = "‎⁨⁨hosamelsafty⁩";
 		System.setProperty("java.rmi.server.hostname", masterAdd);
 		Registry reg = LocateRegistry.getRegistry(masterAdd,masterPort);
 		return (MasterServerClientInterface) reg.lookup(masterName);
 	}
+
+	public ReplicaServerClientInterface gethandle(ReplicaLoc primrayReplica) throws RemoteException, NotBoundException{
+		String replicaName = primrayReplica.getName();
+		String replicaAdd = primrayReplica.getIp();
+		int replicaPort = primrayReplica.getIp();
+		System.setProperty("java.rmi.server.hostname", replicaAdd);
+		Registry reg = LocateRegistry.getRegistry(replicaAdd, replicaPort);
+		return (ReplicaServerClientInterface) reg.lookup(replicaName);
+	}
+
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
 		Client c = new Client();
 //		c.read("test1.txt");

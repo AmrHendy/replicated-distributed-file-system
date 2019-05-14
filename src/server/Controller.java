@@ -6,10 +6,8 @@ import java.rmi.registry.Registry;
 import baseInterface.MasterServerClientInterface;
 
 public class Controller implements CommunicationStrategy {
-
 	@Override
 	public void run() {
-
 		String masterName = "masterServer";
 		String masterAdd = "127.0.0.1";
 		int masterPort = 54443;
@@ -23,5 +21,4 @@ public class Controller implements CommunicationStrategy {
 			e.printStackTrace();
 		}
 	}
-
 }
