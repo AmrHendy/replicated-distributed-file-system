@@ -2,6 +2,7 @@ package baseInterface;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
@@ -25,7 +26,8 @@ public interface MasterServerClientInterface extends Remote {
 	 * @return the requiref info
 	 * @throws RemoteException
 	 * @throws IOException
+	 * @throws NotBoundException 
 	 */
-	public WriteMsg write(FileContent data) throws RemoteException, IOException;
+	public WriteMsg write(FileContent data) throws RemoteException, IOException, NotBoundException;
 
 }

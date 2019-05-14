@@ -3,7 +3,10 @@ package server;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Random;
@@ -13,7 +16,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerClientInterface;
+import baseInterface.MasterServerReplicaServerInterface;
 import baseInterface.ReplicaLoc;
+import baseInterface.ReplicaServerReplicaServerInterface;
 import baseInterface.WriteMsg;
 
 public class MasterServer extends UnicastRemoteObject implements MasterServerClientInterface{
@@ -81,7 +86,7 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	}
 
 	@Override
-	public WriteMsg write(FileContent data) throws RemoteException, IOException {
+	public WriteMsg write(FileContent data) throws RemoteException, IOException, NotBoundException {
 		String fileName = data.getFileName();
 		int tID = transID.incrementAndGet();
 		int timestamp = timeStamp.incrementAndGet();
@@ -94,6 +99,16 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 			replicas = fileReplicaMap.get(fileName);
 		}
 		ReplicaLoc primaryLoc = replicas[0];
+		
+		Registry registry = LocateRegistry.getRegistry(primaryLoc.getIp(), primaryLoc.getPort());
+        MasterServerReplicaServerInterface stub = (MasterServerReplicaServerInterface) registry.lookup(primaryLoc.getName());
+        
+        ArrayList<ReplicaLoc> slaves = new ArrayList<ReplicaLoc>();
+        for( int i = 1 ; i < replicas.length ; i++) {
+        	slaves.add(replicas[i]) ;
+        }
+        stub.registerSlaves(fileName, slaves);
+        
 		return new WriteMsg(tID, timestamp, primaryLoc);
 	}
 

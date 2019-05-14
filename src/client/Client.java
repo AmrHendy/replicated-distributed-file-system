@@ -31,7 +31,7 @@ public class Client {
 		System.out.println("Content = " + fileContent.getData());
 	}
 
-	public void write(FileContent file) throws RemoteException, IOException, NotBoundException, MessageNotFoundException{
+	public WriteResponse write(FileContent file) throws RemoteException, IOException, NotBoundException, MessageNotFoundException{
 		
 		WriteMsg msg  = master.write(file);
 		System.out.println(msg.getTimeStamp());
@@ -51,13 +51,22 @@ public class Client {
 			msgSeqNum++;
 		}
 		
-		boolean successCommit = replicaServer.commit(msg.getTransactionId(), msgSeqNum);
+		return new WriteResponse(msg.getTransactionId(), msgSeqNum, replicaServer) ;
+	}
+	
+	public boolean commit(WriteResponse response) throws RemoteException, FileNotFoundException, MessageNotFoundException, IOException {
+		boolean successCommit = response.getReplicaServer().commit(response.getTransactionId(), response.getMessageSeqNumber());
 		if(successCommit){
 			System.out.println("Successfull Write");
 		}
 		else{
 			System.out.println("Unsuccessfull Write");
 		}
+		return successCommit ;
+	}
+
+	public boolean abort(WriteResponse response) throws RemoteException, FileNotFoundException, MessageNotFoundException, IOException {
+		return response.getReplicaServer().abort(response.getTransactionId());
 	}
 	
 	public MasterServerClientInterface gethandle() throws RemoteException, NotBoundException{
@@ -80,7 +89,9 @@ public class Client {
 
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
 		
-		
+		/*
+		 * test read write not found file commit
+		 * 	
 		Client c = new Client();
 		c.read("test1.txt");
 	
@@ -88,7 +99,7 @@ public class Client {
 		f.setData("write is done 1");
 		
 		try {
-			c.write(f);
+			c.commit(c.write(f));
 		} catch (MessageNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -96,6 +107,97 @@ public class Client {
 		
 		c.read("test1.txt");
 	
+ 		*/
+		
+		/*
+		 * test read write not found file abort 
+		 * 
+		Client c = new Client();
+		FileContent f = new FileContent("test6.txt");
+		f.setData("write is done 1");
+		
+		try {
+			c.abort(c.write(f));
+		} catch (MessageNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+		*/	
+		
+		
+		/*
+		 * test read write not found file commit
+		 * 
+		Client c = new Client();
+		FileContent f = new FileContent("test6.txt");
+		f.setData("write is done 1");
+		
+		try {
+			c.commit(c.write(f));
+		} catch (MessageNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		*/
+		
+		
+		/*
+		 * multiple writes at same time 
+		 * 
+		Thread t1 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Client c1 = new Client();
+					FileContent f = new FileContent("test7.txt");
+					f.setData("write is done 1");
+					Thread.sleep(1000);
+					WriteResponse response = c1.write(f);
+					Thread.sleep(1000);
+					c1.commit(response);
+				} catch (InterruptedException | NotBoundException | IOException | MessageNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		Thread t2 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Client c1 = new Client();
+					FileContent f = new FileContent("test7.txt");
+					f.setData("write is done 2");
+					Thread.sleep(1000);
+					WriteResponse response = c1.write(f);
+					Thread.sleep(1000);
+					c1.commit(response);
+				} catch (InterruptedException | NotBoundException | IOException | MessageNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		Thread t3 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Client c1 = new Client();
+					FileContent f = new FileContent("test7.txt");
+					f.setData("write is done 3");
+					Thread.sleep(1000);
+					WriteResponse response = c1.write(f);
+					Thread.sleep(1000);
+					c1.commit(response);
+				} catch (InterruptedException | NotBoundException | IOException | MessageNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		t1.start();
+		t2.start();
+		t3.start();
+		*/
 	
 	}
 }

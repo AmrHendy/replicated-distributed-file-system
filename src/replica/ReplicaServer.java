@@ -203,19 +203,6 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		try {
-			ArrayList<ReplicaLoc> slaves = new ArrayList<ReplicaLoc>();
-			slaves.add(r2);
-			slaves.add(r3);
-			rs1.registerSlaves("test1.txt", slaves);
-		} catch (RemoteException | NotBoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
-		
     }
 
 
