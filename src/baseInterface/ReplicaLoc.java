@@ -2,7 +2,7 @@ package baseInterface;
 
 import java.io.Serializable;
 
-public class ReplicaLoc  implements Serializable {
+public class ReplicaLoc implements Serializable {
 	/**
 	 * 
 	 */
@@ -10,12 +10,15 @@ public class ReplicaLoc  implements Serializable {
 	private String name;
 	private String ip;
 	private Integer port;
+	private boolean alive;
 	
-	public ReplicaLoc(String name,String ip,Integer port) {
+	public ReplicaLoc(String name, String ip, Integer port) {
 		this.name = name;
 		this.ip = ip;
 		this.port = port;
+		this.alive = true;
 	}
+
 	public String getName() {
 		return name;
 	}
@@ -34,5 +37,11 @@ public class ReplicaLoc  implements Serializable {
 	public void setPort(Integer port) {
 		this.port = port;
 	}
-	
+
+	public boolean getAlive() {
+		return alive;
+	}
+	public void setAlive(boolean alive) {
+		this.alive = alive;
+	}
 }

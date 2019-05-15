@@ -13,6 +13,8 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerClientInterface;
@@ -73,7 +75,11 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		sc.close();
 		
         transID = new AtomicInteger(0);
-        timeStamp = new AtomicInteger(0);        
+		timeStamp = new AtomicInteger(0);      
+
+		// Create a new thread to run the hear beat with the replica servers
+		Timer heartBeatTimer = new Timer();  
+		heartBeatTimer.scheduleAtFixedRate(new HeartBeatTask(), 0, heartBeatRate);
 	}
 
 	@Override
@@ -83,6 +89,32 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 			throw new FileNotFoundException();
 		}
 		return fileReplicaMap.get(fileName);
+	}
+
+	private void assignNewPrimraryReplica(String fileName){
+		ReplicaLoc[] replicas = fileReplicaMap.get(fileName);
+		ReplicaLoc[] newFileReplicas = new ReplicaLoc[REP_PER_FILE];
+		boolean newPrimaryAssigned = false;
+		for (ReplicaLoc replicaLoc : replicas) {
+			if (replicaLoc.getAlive()){
+				newPrimaryAssigned = true;
+				newFileReplicas[0] = replicaLoc;
+				break;
+			}
+		}
+		int index = 1;
+		for (ReplicaLoc replicaLoc : replicas) {
+			if(index == REP_PER_FILE){
+				// that means all file replicas arenot alive then we canot choose any of them to be primary
+				// we can think of choose 3 news replicas, but about the existing files on the old 3 replicas
+			}
+			if (!replicaLoc.getName().equals(newFileReplicas[0].getFileName()){
+				newFileReplicas[index] = replicaLoc;
+				index++;
+			}
+		}
+		// assign the new replicas to the file
+		fileReplicaMap.put(fileName, newFileReplicas);
 	}
 
 	@Override
@@ -98,8 +130,15 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		else {
 			replicas = fileReplicaMap.get(fileName);
 		}
-		ReplicaLoc primaryLoc = replicas[0];
 		
+		ReplicaLoc primaryLoc = replicas[0];
+		// check if the primary replica server is not available, then choose another primray replica for that file
+		if(!primaryLoc.getAlive()){
+			assignNewPrimraryReplica(fileName);
+			replicas = fileReplicaMap.get(fileName);
+			primaryLoc = replicas[0];
+		}
+
 		Registry registry = LocateRegistry.getRegistry(primaryLoc.getIp(), primaryLoc.getPort());
         MasterServerReplicaServerInterface stub = (MasterServerReplicaServerInterface) registry.lookup(primaryLoc.getName());
         
@@ -118,7 +157,7 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		boolean[] visited = new boolean[replicaLocs.size()];
 		for (int i = 0; i < replicas.length; i++) {
 			int randomReplica = rand.nextInt(replicaLocs.size());
-			while (visited[randomReplica])
+			while (visited[randomReplica] || !replicaLocs.get(randomReplica).getAlive())
 				randomReplica = rand.nextInt(replicaLocs.size());
 			visited[randomReplica] = true;
 			replicas[i] = replicaLocs.get(randomReplica);
@@ -126,7 +165,27 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		return replicas;
 	}
 
+	//HeartBeat check
+	class HeartBeatTask extends TimerTask {
+		@Override
+		public void run() {
+			// check state of replicas
+			for (ReplicaLoc replicaLoc : replicaLocs) {
+				try {
+					nameReplicaLocMap.get(replicaLoc.getName()).checkAlive();
+				} catch (RemoteException e) {
+					// if an exception occur in rmi then that means the replica is crashed
+					// or not available now so we will set its alive to false to handle read or write
+					// if that replica is a primary for some files
+					replicaLoc.setAlive(false);
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
 	public static void main(String[] args) throws IOException {
+		// binding the stub for rmi call
 		Controller c = new Controller();
 		c.run();
 	}

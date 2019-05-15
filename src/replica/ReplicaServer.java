@@ -149,7 +149,11 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
             slaveReplicasStubs.add(stub);
    	    }
         fileSlaveReplicasMap.put(fileName, slaveReplicasStubs);
-	}
+    }
+    
+    public boolean checkAlive(){
+        return true;
+    }
 
     public void run(){
         String replicaName = replicaLoc.getName();
@@ -204,6 +208,4 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
 			e.printStackTrace();
 		}
     }
-
-
 }
