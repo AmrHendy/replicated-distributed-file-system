@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerClientInterface;
@@ -31,7 +33,8 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	private ConcurrentHashMap<String, ReplicaLoc[]> fileReplicaMap;
 	private ConcurrentHashMap<String, ReplicaLoc> nameReplicaLocMap;
 	private ArrayList<ReplicaLoc> replicaLocs;
-	private static String METADATA_FILE_NAME = "metadata.txt";
+	private static String MASTER_METADATA = "masterServer.txt";
+	private static String METADATA_FILE_NAME = "files_metadata.txt";
 	private static String REPLICA_FILE_NAME = "replicaServers.txt";
 	private static int REP_PER_FILE = 3;
 
@@ -43,25 +46,15 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		fileReplicaMap = new ConcurrentHashMap<>();
 		replicaLocs = new ArrayList<>(nameReplicaLocMap.values());	
 
-		// filling the maps from the presistant metadata files on disk
-		// reading the replica servers metadata
-		File repServers = new File(REPLICA_FILE_NAME);
-		Scanner sc = new Scanner(repServers);
-        while (sc.hasNextLine()) {
-            String line = sc.nextLine();
-            String[] splited = line.split(" ");
-            String name = splited[0];
-            String ip = splited[1];
-            int port = Integer.parseInt(splited[2]);
-			ReplicaLoc replicaLoc = new ReplicaLoc(name, ip, port);
-            nameReplicaLocMap.put(name, replicaLoc);
-			replicaLocs.add(replicaLoc);
-		}
-        sc.close();
+		// bind MasterServer in registery to allow client to communicate
+		bindRMI();
+		
+		// start the replica servers running
+		runAllReplicas();
 
 		// reading the files metadata
 		File metaData = new File(METADATA_FILE_NAME);
-        sc = new Scanner(metaData);
+        Scanner sc = new Scanner(metaData);
 		while (sc.hasNextLine()) {
             String line = sc.nextLine();
             String[] splited = line.split(" ");
@@ -165,6 +158,58 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		return replicas;
 	}
 
+	private void bindRMI(){
+		File masterServerFile = new File(MASTER_METADATA);
+		Scanner sc = new Scanner(masterServerFile);
+		// ignore the first heading line
+		String line = sc.nextLine();
+		// read the master server information 
+		line = sc.nextLine()
+		String[] splited = line.split(" ");
+		String masterName = splited[0];
+		String masterAdd = splited[1];
+		int masterPort = Integer.parseInt(splited[2]);
+		System.setProperty("java.rmi.server.hostname", masterAdd);
+		try {
+			Registry registry = LocateRegistry.createRegistry(masterPort);
+			registry.bind(masterName, this);
+			System.out.println(masterName + " is alive at address : " + masterAdd + " port : " + masterPort);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void runAllReplicas(){
+		// filling the maps from the presistant metadata files on disk
+		// reading the replica servers metadata
+		File repServers = new File(REPLICA_FILE_NAME);
+		Scanner sc = new Scanner(repServers);
+		// ignore the first heading line
+		String line = sc.nextLine();
+		while (sc.hasNextLine()) {
+            line = sc.nextLine();
+            String[] splited = line.split(" ");
+            String name = splited[0];
+            String ip = splited[1];
+			int port = Integer.parseInt(splited[2]);
+			String replicaDirectoryPath = splited[3]; 
+			ReplicaLoc replicaLoc = new ReplicaLoc(name, ip, port);
+            nameReplicaLocMap.put(name, replicaLoc);
+			replicaLocs.add(replicaLoc);
+			
+			// run the replica server in new thread
+			Thread replicaServerThread = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("Start Replica " + replicaLoc.getName() + " running on address " + replicaLoc.getIp + " and on port " + replicaLoc.getPort());
+					ReplicaServer replicaServer = new ReplicaServer(replicaLoc, replicaDirectoryPath)
+				}
+			});
+			replicaServerThread.start();
+		}
+        sc.close();
+	}
+
 	//HeartBeat check
 	class HeartBeatTask extends TimerTask {
 		@Override
@@ -185,8 +230,6 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	}
 
 	public static void main(String[] args) throws IOException {
-		// binding the stub for rmi call
-		Controller c = new Controller();
-		c.run();
+		MasterServer masterServer = new MasterServer();	
 	}
 }

@@ -52,7 +52,7 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
         this.fileSlaveReplicasMap = new ConcurrentHashMap<String, ArrayList<ReplicaServerReplicaServerInterface>>();	
         this.activeTransactions = new HashMap<Long, String>();
         this.transactionFileMap = new HashMap<Long, Map<Long,byte[]>>();
-        this.run();
+        this.bindRMI();
     }
 
 	public WriteAck write(long txnID, long msgSeqNum, FileContent data) throws RemoteException, IOException{
@@ -155,7 +155,7 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
         return true;
     }
 
-    public void run(){
+    private void bindRMI(){
         String replicaName = replicaLoc.getName();
         String replicaAdd = replicaLoc.getIp();
         int replicaPort = replicaLoc.getPort();
@@ -167,7 +167,7 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
             e.printStackTrace();
         }
     }
-    
+        
     public static void main(String args[]) {
 		ReplicaLoc r1 = new ReplicaLoc("Replica1", "127.0.0.1", 50000) ;
 		ReplicaLoc r2 = new ReplicaLoc("Replica2", "127.0.0.1", 50001) ;
