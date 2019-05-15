@@ -32,7 +32,6 @@ public class Client {
 	}
 
 	public WriteResponse write(FileContent file) throws RemoteException, IOException, NotBoundException, MessageNotFoundException{
-		
 		WriteMsg msg  = master.write(file);
 		System.out.println(msg.getTimeStamp());
 		ReplicaLoc replicaLoc = msg.getLoc();
@@ -50,7 +49,6 @@ public class Client {
 			replicaServer.write(msg.getTransactionId(), msgSeqNum, content);
 			msgSeqNum++;
 		}
-		
 		return new WriteResponse(msg.getTransactionId(), msgSeqNum, replicaServer) ;
 	}
 	
@@ -85,6 +83,56 @@ public class Client {
 		System.setProperty("java.rmi.server.hostname", replicaAdd);
 		Registry reg = LocateRegistry.getRegistry(replicaAdd, replicaPort);
 		return (ReplicaServerClientInterface) reg.lookup(replicaName);
+	}
+
+	public void executeTransaction(String transactionFilePath){
+		File transactionFile = new File(transactionFilePath);
+		Scanner sc = new Scanner(transactionFile);
+		// ignore the first heading line
+		String line = sc.nextLine();
+		// read the transaction
+		String allWriteContent = "";
+		String fileName = null;
+		while (sc.hasNextLine()) {
+			line = sc.nextLine()
+			String[] splited = line.split("\t");
+			String operation = splited[0];
+			if(fileName == null){
+				fileName = splited[1];
+			}
+			else if(fileName != splited[1]){
+				System.out.println("Can't handle multiple files in the same transaction");
+				return;
+			}
+			if(operation.equals("read")){
+				read(fileName);
+			}
+			else if(operation.equals("write")){
+				allWriteContent += splited[2];
+			}
+			else if(operation.equals("commit") || operation.equals("abort")){
+				FileContent fileContent = FileContent(fileName);
+				fileContent.setData(allWriteContent);
+				allWriteContent = "";
+				WriteResponse response = write(fileContent);
+				if(operation.equals("commit")){
+					commit(response);	
+				}
+				else{
+					abort(response);
+				}
+			}
+			else{
+				// ignore that line
+			}
+		}
+		// not existing commit or abort, so we will abort the transaction
+		if(!allWriteContent.isEmpty()){
+			FileContent fileContent = FileContent(fileName);
+			fileContent.setData(allWriteContent);
+			WriteResponse response = write(fileContent);
+			abort(response);
+		}
 	}
 
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
