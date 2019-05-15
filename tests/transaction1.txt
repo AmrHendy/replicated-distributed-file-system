@@ -1,8 +1,3 @@
-// (operation) (fileName) (data in case of write)
-read    test1.txt
-write   test1.txt   hello from the other side
-commit  test1.txt
-read    test1.txt
-write   test1.txt   hello from yasser
-abort   test1.txt
-read    test1.txt
+//	(operation) (fileName) (data in case of write)
+read	test1.txt
+write	test1.txt	abdo was hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee

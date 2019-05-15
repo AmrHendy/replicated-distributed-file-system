@@ -16,8 +16,7 @@ public interface MasterServerClientInterface extends Remote {
 	 * @throws IOException
 	 * @throws RemoteException
 	 */
-	public ReplicaLoc[] read(String fileName) throws FileNotFoundException,
-			IOException, RemoteException;
+	public ReplicaLoc[] read(String fileName) throws RemoteException,FileNotFoundException;
 
 	/**
 	 * Start a new write transaction
@@ -27,7 +26,8 @@ public interface MasterServerClientInterface extends Remote {
 	 * @throws RemoteException
 	 * @throws IOException
 	 * @throws NotBoundException 
+	 * @throws MessageNotFoundException 
 	 */
-	public WriteMsg write(FileContent data) throws RemoteException, IOException, NotBoundException;
+	public WriteMsg write(FileContent data) throws RemoteException, NotBoundException, MessageNotFoundException;
 
 }

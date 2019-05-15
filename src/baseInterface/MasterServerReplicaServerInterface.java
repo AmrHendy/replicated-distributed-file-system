@@ -9,5 +9,6 @@ import java.util.ArrayList;
 public interface MasterServerReplicaServerInterface extends Remote {
 
 	public void registerSlaves(String fileName, ArrayList<ReplicaLoc> slaveReplicas) throws AccessException, RemoteException, NotBoundException;
-	public boolean checkAlive();
+	
+	public boolean checkAlive() throws RemoteException;
 }

@@ -23,6 +23,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerReplicaServerInterface;
@@ -101,8 +103,15 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
 		
 		boolean writeSuccess = true;
 		for (ReplicaServerReplicaServerInterface replica : slaveReplicas) {
-            boolean sucess = replica.updateFile(fileName, write_lis);
-            writeSuccess = writeSuccess && sucess;
+            boolean sucess;
+			sucess = true;
+            try {
+				sucess = replica.updateFile(fileName, write_lis);
+			} catch (NullPointerException e) {
+				sucess = false;
+				Logger.getLogger("replica").log(Level.SEVERE, "one of replicas didn't respond with ACK");
+			}
+			writeSuccess = writeSuccess && sucess;
 		}
 				
 		locks.putIfAbsent(fileName, new ReentrantReadWriteLock());
@@ -136,16 +145,24 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
         return true;
     }
     
-	public void registerSlaves(String fileName, ArrayList<ReplicaLoc> slaveReplicas) throws AccessException, RemoteException, NotBoundException {
+	public void registerSlaves(String fileName, ArrayList<ReplicaLoc> slaveReplicas) throws AccessException {
 		ArrayList<ReplicaServerReplicaServerInterface> slaveReplicasStubs = new ArrayList<ReplicaServerReplicaServerInterface>();
         fileSlaveReplicasLocMap.put(fileName, slaveReplicas);	
 		for (ReplicaLoc loc : slaveReplicas) {
 			// if the current locations is this replica .. ignore
 			if (loc.getName() == this.replicaLoc.getName())
 				continue;
-			  
-            Registry registry = LocateRegistry.getRegistry(loc.getIp(), loc.getPort());
-            ReplicaServerReplicaServerInterface stub = (ReplicaServerReplicaServerInterface) registry.lookup(loc.getName());
+			
+            Registry registry;
+            ReplicaServerReplicaServerInterface stub = null ;
+			try {
+				registry = LocateRegistry.getRegistry(loc.getIp(), loc.getPort());
+				stub = (ReplicaServerReplicaServerInterface) registry.lookup(loc.getName());
+			} catch (RemoteException e) {
+				Logger.getLogger("replica").log(Level.SEVERE, "slave replica " + loc.getName() + " is down");
+			} catch (NotBoundException e) {
+				Logger.getLogger("replica").log(Level.SEVERE, "slave replica " + loc.getName() + " is down");
+			}
             slaveReplicasStubs.add(stub);
    	    }
         fileSlaveReplicasMap.put(fileName, slaveReplicasStubs);
@@ -167,45 +184,16 @@ public class ReplicaServer extends UnicastRemoteObject implements ReplicaServerC
             e.printStackTrace();
         }
     }
-        
-    public static void main(String args[]) {
-		ReplicaLoc r1 = new ReplicaLoc("Replica1", "127.0.0.1", 50000) ;
-		ReplicaLoc r2 = new ReplicaLoc("Replica2", "127.0.0.1", 50001) ;
-		ReplicaLoc r3 = new ReplicaLoc("Replica3", "127.0.0.1", 50002) ;
-
-		/*	
-		File replica1dir = new File("replica1dir") ;
-		File replica2dir = new File("replica2dir") ;
-		File replica3dir = new File("replica3dir") ;
-		System.out.println(replica1dir.exists());
-		System.out.println(replica2dir.exists());
-		System.out.println(replica3dir.exists());
-	 	*/
-		
-		
-		ReplicaServer rs1 = null, rs2 = null , rs3 = null;
-		try {
-			rs1 = new ReplicaServer(r1, "replica1dir/");
-			System.out.println(r1.getName() + " is now alive at ->  address : " + r1.getIp() + " port : " + r1.getPort());
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		try {
-			rs2 = new ReplicaServer(r2, "replica2dir/");
-			System.out.println(r2.getName() + " is now alive at ->  address : " + r2.getIp() + " port : " + r2.getPort());
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		try {
-			rs3 = new ReplicaServer(r3, "replica3dir/");
-			System.out.println(r3.getName() + " is now alive at ->  address : " + r3.getIp() + " port : " + r3.getPort());
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    
+    public void unbindRMI() {
+    	String replicaName = replicaLoc.getName();
+        int replicaPort = replicaLoc.getPort();
+        try {
+            Registry registry = LocateRegistry.getRegistry(replicaPort);
+            registry.unbind(replicaName);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+        
 }

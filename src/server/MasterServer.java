@@ -8,22 +8,24 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import baseInterface.FileContent;
 import baseInterface.MasterServerClientInterface;
 import baseInterface.MasterServerReplicaServerInterface;
+import baseInterface.MessageNotFoundException;
 import baseInterface.ReplicaLoc;
-import baseInterface.ReplicaServerReplicaServerInterface;
 import baseInterface.WriteMsg;
+import replica.ReplicaServer;
 
 public class MasterServer extends UnicastRemoteObject implements MasterServerClientInterface{
 	
@@ -37,24 +39,43 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	private static String METADATA_FILE_NAME = "files_metadata.txt";
 	private static String REPLICA_FILE_NAME = "replicaServers.txt";
 	private static int REP_PER_FILE = 3;
+	private static int Heart_Beat_Rate = 1000 ;
+	private static String log_name = "master server" ; 
 
 	private AtomicInteger transID ,timeStamp;
 	
-	public MasterServer() throws FileNotFoundException , RemoteException{
+	public MasterServer() throws RemoteException{
 		// initialize the maps
 		nameReplicaLocMap = new ConcurrentHashMap<>();
 		fileReplicaMap = new ConcurrentHashMap<>();
 		replicaLocs = new ArrayList<>(nameReplicaLocMap.values());	
 
 		// bind MasterServer in registery to allow client to communicate
-		bindRMI();
+		try {
+			bindRMI();
+		} catch (FileNotFoundException e) {
+			Logger.getLogger(log_name).log(Level.SEVERE,"Master meta data is not found in master");
+			System.exit(-1);
+		}
 		
 		// start the replica servers running
-		runAllReplicas();
+		try {
+			runAllReplicas();
+		} catch (FileNotFoundException e) {
+			Logger.getLogger(log_name).log(Level.SEVERE,"Master meta data is not found in replica");
+			System.exit(-1);
+		}
 
 		// reading the files metadata
 		File metaData = new File(METADATA_FILE_NAME);
-        Scanner sc = new Scanner(metaData);
+        Scanner sc = null;
+		try {
+			sc = new Scanner(metaData);
+		} catch (FileNotFoundException e) {
+			Logger.getLogger(log_name).log(Level.SEVERE,"Master meta data is not found in Master");
+			System.exit(-1);
+		}
+		
 		while (sc.hasNextLine()) {
             String line = sc.nextLine();
             String[] splited = line.split(" ");
@@ -72,14 +93,21 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 
 		// Create a new thread to run the hear beat with the replica servers
 		Timer heartBeatTimer = new Timer();  
-		heartBeatTimer.scheduleAtFixedRate(new HeartBeatTask(), 0, heartBeatRate);
+		heartBeatTimer.scheduleAtFixedRate(new HeartBeatTask(), 0, Heart_Beat_Rate);
 	}
 
 	@Override
-	public ReplicaLoc[] read(String fileName) throws FileNotFoundException, IOException, RemoteException {
-		System.out.println("Receiving Read Request From the Client");
+	public ReplicaLoc[] read(String fileName) throws FileNotFoundException {
 		if(!fileReplicaMap.containsKey(fileName)){
 			throw new FileNotFoundException();
+		}
+		ReplicaLoc[] replicas = fileReplicaMap.get(fileName);
+		ReplicaLoc primaryLoc = replicas[0];
+		// check if the primary replica server is not available, then choose another primray replica for that file
+		if(!primaryLoc.getAlive()){
+			assignNewPrimraryReplica(fileName);
+			replicas = fileReplicaMap.get(fileName);
+			primaryLoc = replicas[0];
 		}
 		return fileReplicaMap.get(fileName);
 	}
@@ -101,7 +129,7 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 				// that means all file replicas arenot alive then we canot choose any of them to be primary
 				// we can think of choose 3 news replicas, but about the existing files on the old 3 replicas
 			}
-			if (!replicaLoc.getName().equals(newFileReplicas[0].getFileName()){
+			if (!replicaLoc.getName().equals(newFileReplicas[0].getName())){
 				newFileReplicas[index] = replicaLoc;
 				index++;
 			}
@@ -111,7 +139,7 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	}
 
 	@Override
-	public WriteMsg write(FileContent data) throws RemoteException, IOException, NotBoundException {
+	public WriteMsg write(FileContent data) throws RemoteException, NotBoundException, MessageNotFoundException  {
 		String fileName = data.getFileName();
 		int tID = transID.incrementAndGet();
 		int timestamp = timeStamp.incrementAndGet();
@@ -134,37 +162,61 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 
 		Registry registry = LocateRegistry.getRegistry(primaryLoc.getIp(), primaryLoc.getPort());
         MasterServerReplicaServerInterface stub = (MasterServerReplicaServerInterface) registry.lookup(primaryLoc.getName());
+
         
         ArrayList<ReplicaLoc> slaves = new ArrayList<ReplicaLoc>();
         for( int i = 1 ; i < replicas.length ; i++) {
         	slaves.add(replicas[i]) ;
         }
+                
         stub.registerSlaves(fileName, slaves);
         
 		return new WriteMsg(tID, timestamp, primaryLoc);
 	}
 
-	private ReplicaLoc[] getRandomReplica(){
+	private ReplicaLoc[] getRandomReplica() throws MessageNotFoundException{
 		Random rand = new Random();
 		ReplicaLoc[] replicas = new ReplicaLoc[REP_PER_FILE];
 		boolean[] visited = new boolean[replicaLocs.size()];
-		for (int i = 0; i < replicas.length; i++) {
-			int randomReplica = rand.nextInt(replicaLocs.size());
-			while (visited[randomReplica] || !replicaLocs.get(randomReplica).getAlive())
-				randomReplica = rand.nextInt(replicaLocs.size());
-			visited[randomReplica] = true;
-			replicas[i] = replicaLocs.get(randomReplica);
+		
+		
+		ArrayList<ReplicaLoc> dead = new ArrayList<ReplicaLoc>();
+		ArrayList<ReplicaLoc> active = new ArrayList<ReplicaLoc>();
+		
+		for(int i = 0 ; i < replicaLocs.size() ; i++) {
+			if(replicaLocs.get(i).getAlive()) {
+				active.add(replicaLocs.get(i));
+			}else {
+				dead.add(replicaLocs.get(i));
+			}
 		}
+
+		Logger.getLogger(log_name).log(Level.INFO,"replicas : " + active.size() + " active " + dead.size() + " dead");
+		
+		int taken = 0 ;
+
+		for(int i = 0 ; i < active.size() && taken < REP_PER_FILE ; i++) {
+			replicas[taken++] = active.get(i);
+		}
+		
+		if(taken == 0) {
+			throw new MessageNotFoundException(); 
+		}
+		
+		for(int i = 0 ; i < dead.size() && taken < REP_PER_FILE ; i++) {
+			replicas[taken++] = dead.get(i);
+		}
+		
 		return replicas;
 	}
 
-	private void bindRMI(){
+	private void bindRMI() throws FileNotFoundException{
 		File masterServerFile = new File(MASTER_METADATA);
 		Scanner sc = new Scanner(masterServerFile);
 		// ignore the first heading line
 		String line = sc.nextLine();
 		// read the master server information 
-		line = sc.nextLine()
+		line = sc.nextLine();
 		String[] splited = line.split(" ");
 		String masterName = splited[0];
 		String masterAdd = splited[1];
@@ -173,13 +225,13 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		try {
 			Registry registry = LocateRegistry.createRegistry(masterPort);
 			registry.bind(masterName, this);
-			System.out.println(masterName + " is alive at address : " + masterAdd + " port : " + masterPort);
+			Logger.getLogger(log_name).log(Level.INFO,masterName + " is alive at address : " + masterAdd + " port : " + masterPort);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void runAllReplicas(){
+	private void runAllReplicas() throws FileNotFoundException{
 		// filling the maps from the presistant metadata files on disk
 		// reading the replica servers metadata
 		File repServers = new File(REPLICA_FILE_NAME);
@@ -201,11 +253,28 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 			Thread replicaServerThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					System.out.println("Start Replica " + replicaLoc.getName() + " running on address " + replicaLoc.getIp + " and on port " + replicaLoc.getPort());
-					ReplicaServer replicaServer = new ReplicaServer(replicaLoc, replicaDirectoryPath)
+					Logger.getLogger(log_name).log(Level.INFO,"Start Replica " + replicaLoc.getName() + " running on address " + replicaLoc.getIp() + " and on port " + replicaLoc.getPort());
+					try {
+						ReplicaServer replicaServer = new ReplicaServer(replicaLoc, replicaDirectoryPath);
+						long now = System.currentTimeMillis(); 
+						while(true) {
+							long curr = System.currentTimeMillis(); 
+							if(replicaLoc.getName().equals("Replica1") && curr - now > 5000) {
+								Logger.getLogger(log_name).log(Level.INFO, "Replica1 goes died");
+								replicaServer.unbindRMI();
+								return;
+							}
+						}
+					} catch (RemoteException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			});
+			replicaServerThread.setName(replicaLoc.getName());
 			replicaServerThread.start();
+			
+			
 		}
         sc.close();
 	}
@@ -217,19 +286,17 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 			// check state of replicas
 			for (ReplicaLoc replicaLoc : replicaLocs) {
 				try {
-					nameReplicaLocMap.get(replicaLoc.getName()).checkAlive();
-				} catch (RemoteException e) {
+					Registry registry = LocateRegistry.getRegistry(replicaLoc.getIp(), replicaLoc.getPort());
+					MasterServerReplicaServerInterface stub = (MasterServerReplicaServerInterface) registry.lookup(replicaLoc.getName());
+					stub.checkAlive();
+				} catch (RemoteException | NotBoundException e) {
 					// if an exception occur in rmi then that means the replica is crashed
 					// or not available now so we will set its alive to false to handle read or write
 					// if that replica is a primary for some files
 					replicaLoc.setAlive(false);
-					e.printStackTrace();
 				}
 			}
 		}
 	}
 
-	public static void main(String[] args) throws IOException {
-		MasterServer masterServer = new MasterServer();	
-	}
 }
