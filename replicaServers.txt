@@ -1,4 +1,6 @@
 // replicaName  replica Address  replica Port  replica directory path
 Replica1 127.0.0.1 50000 replica1dir/
 Replica2 127.0.0.1 50001 replica2dir/
-Replica3 127.0.0.1 50002 replica3dir/
+Replica3 127.0.0.1 50003 replica3dir/
+Replica4 127.0.0.1 50004 replica4dir/
+Replica5 127.0.0.1 50005 replica5dir/

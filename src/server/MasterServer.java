@@ -97,7 +97,7 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 	}
 
 	@Override
-	public ReplicaLoc[] read(String fileName) throws FileNotFoundException {
+	public ReplicaLoc[] read(String fileName) throws FileNotFoundException, MessageNotFoundException {
 		if(!fileReplicaMap.containsKey(fileName)){
 			throw new FileNotFoundException();
 		}
@@ -112,30 +112,43 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 		return fileReplicaMap.get(fileName);
 	}
 
-	private void assignNewPrimraryReplica(String fileName){
+	private void assignNewPrimraryReplica(String fileName) throws MessageNotFoundException{
 		ReplicaLoc[] replicas = fileReplicaMap.get(fileName);
-		ReplicaLoc[] newFileReplicas = new ReplicaLoc[REP_PER_FILE];
+		ArrayList<ReplicaLoc> newFileReplicas = new ArrayList<ReplicaLoc>() ; 
 		boolean newPrimaryAssigned = false;
 		for (ReplicaLoc replicaLoc : replicas) {
+			System.out.println(replicaLoc.getName());
 			if (replicaLoc.getAlive()){
 				newPrimaryAssigned = true;
-				newFileReplicas[0] = replicaLoc;
+				newFileReplicas.add(replicaLoc);
 				break;
 			}
 		}
+		System.out.println(newFileReplicas.size());
+		
+		if(newFileReplicas.isEmpty()) {
+			replicas = getRandomReplica();
+			newFileReplicas.add(replicas[0]);
+		}
+		
 		int index = 1;
 		for (ReplicaLoc replicaLoc : replicas) {
 			if(index == REP_PER_FILE){
 				// that means all file replicas arenot alive then we canot choose any of them to be primary
 				// we can think of choose 3 news replicas, but about the existing files on the old 3 replicas
 			}
-			if (!replicaLoc.getName().equals(newFileReplicas[0].getName())){
-				newFileReplicas[index] = replicaLoc;
+			if (!replicaLoc.getName().equals(newFileReplicas.get(0).getName()) && replicaLoc.getAlive()){
+				newFileReplicas.add(replicaLoc);
 				index++;
 			}
 		}
+		
+		ReplicaLoc[] replica_loc = new ReplicaLoc[newFileReplicas.size()];
+		for(int i = 0 ; i < newFileReplicas.size() ; i++) {
+			replica_loc[i] = newFileReplicas.get(i);
+		}
 		// assign the new replicas to the file
-		fileReplicaMap.put(fileName, newFileReplicas);
+		fileReplicaMap.put(fileName, replica_loc);
 	}
 
 	@Override
@@ -176,38 +189,28 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 
 	private ReplicaLoc[] getRandomReplica() throws MessageNotFoundException{
 		Random rand = new Random();
-		ReplicaLoc[] replicas = new ReplicaLoc[REP_PER_FILE];
 		boolean[] visited = new boolean[replicaLocs.size()];
 		
-		
-		ArrayList<ReplicaLoc> dead = new ArrayList<ReplicaLoc>();
 		ArrayList<ReplicaLoc> active = new ArrayList<ReplicaLoc>();
 		
 		for(int i = 0 ; i < replicaLocs.size() ; i++) {
 			if(replicaLocs.get(i).getAlive()) {
 				active.add(replicaLocs.get(i));
-			}else {
-				dead.add(replicaLocs.get(i));
 			}
 		}
 
-		Logger.getLogger(log_name).log(Level.INFO,"replicas : " + active.size() + " active " + dead.size() + " dead");
+		Logger.getLogger(log_name).log(Level.INFO,"replicas : " + active.size() + " active " + (REP_PER_FILE - active.size()) + " dead");
 		
-		int taken = 0 ;
-
-		for(int i = 0 ; i < active.size() && taken < REP_PER_FILE ; i++) {
-			replicas[taken++] = active.get(i);
-		}
-		
-		if(taken == 0) {
+		if(active.isEmpty()) {
 			throw new MessageNotFoundException(); 
 		}
-		
-		for(int i = 0 ; i < dead.size() && taken < REP_PER_FILE ; i++) {
-			replicas[taken++] = dead.get(i);
+				
+		ReplicaLoc[] replica_loc = new ReplicaLoc[active.size()];
+		for(int i = 0 ; i < active.size() ; i++) {
+			replica_loc[i] = active.get(i);
 		}
 		
-		return replicas;
+		return replica_loc;
 	}
 
 	private void bindRMI() throws FileNotFoundException{
@@ -259,8 +262,8 @@ public class MasterServer extends UnicastRemoteObject implements MasterServerCli
 						long now = System.currentTimeMillis(); 
 						while(true) {
 							long curr = System.currentTimeMillis(); 
-							if(replicaLoc.getName().equals("Replica1") && curr - now > 5000) {
-								Logger.getLogger(log_name).log(Level.INFO, "Replica1 goes died");
+							if( (replicaLoc.getName().equals("Replica2") || replicaLoc.getName().equals("Replica3") || replicaLoc.getName().equals("Replica1"))  && curr - now > 5000) {
+								Logger.getLogger(log_name).log(Level.INFO, replicaLoc.getName() + " died");
 								replicaServer.unbindRMI();
 								return;
 							}

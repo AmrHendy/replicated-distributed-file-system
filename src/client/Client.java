@@ -50,6 +50,9 @@ public class Client {
 		} catch (RemoteException e) {
 			Logger.getLogger(log_name).log(Level.SEVERE,"Master server is down");
 			System.exit(-1);
+		} catch (MessageNotFoundException e) {
+			logger.log(Level.WARNING,"All replicas is down");
+			return;
 		}
 		
 		// conection with replca
@@ -70,6 +73,7 @@ public class Client {
 		try {
 			Logger.getLogger(log_name).log(Level.INFO,"Client request read from replica");
 			fileContent = replicaServer.read(fileName);
+			Logger.getLogger(log_name).log(Level.INFO,"Client request read return with : " + fileContent.getData());
 		} catch (FileNotFoundException e) {
 			logger.log(Level.WARNING,"File to be read is not found in ditributed file system");
 			return;
@@ -80,6 +84,9 @@ public class Client {
 			logger.log(Level.WARNING,"IO exception occurs at replica during reading");
 			return;
 		}
+		
+		
+		
 	}
 
 	public WriteResponse write(FileContent file){

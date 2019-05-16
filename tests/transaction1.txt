@@ -1,3 +1,5 @@
 //	(operation) (fileName) (data in case of write)
 read	test1.txt
-write	test1.txt	abdo was hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+write	test1.txt	sba7 fol
+commit	test1.txt
+read	test1.txt

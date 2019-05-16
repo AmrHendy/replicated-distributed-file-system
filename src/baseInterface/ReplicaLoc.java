@@ -12,6 +12,10 @@ public class ReplicaLoc implements Serializable {
 	private Integer port;
 	private boolean alive;
 	
+	public ReplicaLoc() {
+		super();
+	}
+
 	public ReplicaLoc(String name, String ip, Integer port) {
 		this.name = name;
 		this.ip = ip;

@@ -1,5 +1,7 @@
 //	(operation) (fileName) (data in case of write)
-write	test9.txt	client 1 write 1
-write	test9.txt	client 1 write 2
-write	test9.txt	client 1 write 3
-commit	test9.txt
+write	test1.txt	client 1 write 1
+write	test1.txt	client 1 write 2
+write	test1.txt	client 1 write 3
+read	test1.txt
+commit	test1.txt
+read	test1.txt

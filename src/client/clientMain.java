@@ -12,8 +12,8 @@ import baseInterface.MessageNotFoundException;
 public class clientMain{
 	public static void main(String[] args) {
         // test using transaction txt files numbered from 1 to testNumber
-        int testNumber = 3;
-        for(int test = 3; test <= testNumber; test++){
+        int testNumber = 1;
+        for(int test = 1; test <= testNumber; test++){
             String transactionFilePath = "tests/transaction" + test + ".txt";
             Thread clientThread = new Thread(new Runnable() {
 				@Override
